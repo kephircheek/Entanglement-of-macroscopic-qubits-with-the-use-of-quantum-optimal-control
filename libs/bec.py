@@ -658,3 +658,17 @@ def state_under_h_na_exact_focked(model, t):
         )
         for k in range(model.n_bosons + 1)
     ) / math.sqrt(2**model.n_bosons)
+
+
+def state_under_h_nn_exact(model, t):
+    return sum(
+        (
+            math.sqrt(math.comb(model.n_bosons, k))
+            * fock_state_constructor(model, 2, 0, k)
+            * coherent_state_constructor(
+                model, 2, 1, np.exp(1j * k * t) / math.sqrt(2), 1 / math.sqrt(2)
+            )
+            * vacuum_state(model)
+        )
+        for k in range(model.n_bosons + 1)
+    ) / math.sqrt(2**model.n_bosons)
