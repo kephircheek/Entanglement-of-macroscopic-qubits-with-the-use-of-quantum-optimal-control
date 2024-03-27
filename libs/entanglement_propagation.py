@@ -67,7 +67,7 @@ def k_state(i: int, k: int, m: int, n: int):
     return bec.fock_state_constructor(bec.BEC_Qubits.init_default(n, 0), m, i=i, k=k)
 
 
-def f_state(t: float, q: tuple[int], m: int, n: int):
+def f_state(t: float, q: tuple[int], m: int, n: int, focked=True):
     """
     Return final state, see eq. 11 and eq. 12.
 
@@ -94,10 +94,22 @@ def f_state(t: float, q: tuple[int], m: int, n: int):
         k_ranges[-1] = fock_range  # reveal coherent state via fock states
     k_sets = list(itertools.product(*k_ranges))
 
+    model = None
+    if not focked:
+        model = bec.BEC_Qubits.init_default(n, 0)
+
     return (
         sum(
             f_state_coeff(t, q, k, m, n)
-            * tensor(fock(n + 1, k[0]), fock(n + 1, k[m - 1]))
+            * (
+                tensor(fock(n + 1, k[0]), fock(n + 1, k[m - 1]))
+                if focked
+                else (
+                    bec.fock_state_constructor(model, n=2, i=0, k=k[0])
+                    * bec.fock_state_constructor(model, n=2, i=1, k=k[m - 1])
+                    * bec.vacuum_state(model)
+                )
+            )
             for k in k_sets
         )
         / norm
