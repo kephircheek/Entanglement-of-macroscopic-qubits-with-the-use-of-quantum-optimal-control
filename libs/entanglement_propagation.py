@@ -55,7 +55,7 @@ def projection_on_z_fock_state(q: int, k: int, n: int):
 
 def omega(t: float, q: int, j: int, k: tuple[int], phase: float, n: int):
     if j % 2 == 1:
-        return projection_on_qubit_state(q, (k[j - 1] - k[j + 1]) * t, n)
+        return projection_on_qubit_state(q, (k[j - 1] - k[j + 1]) * t + phase, n)
     return (
         np.exp(1j * k[j] * phase)
         * math.sqrt(comb(n, k[j]))
