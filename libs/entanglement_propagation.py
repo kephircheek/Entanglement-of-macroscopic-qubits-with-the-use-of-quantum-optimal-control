@@ -126,6 +126,42 @@ def f_state_coeff(t: float, q: tuple[int], k: tuple[int], m: int, n: int):
     return coeff
 
 
+def f_state_fid_respect_m2(t: float, q: tuple[int], m: int, n: int):
+    if len(q) < (m - 2):
+        raise ValueError("too few measured sites")
+    q = (None,) + tuple(q) + (None,)
+    odd = m % 2 == 1
+    norm = None
+    if odd:
+        norm = 2 ** (n * (m + 5) / 2)
+    else:
+        norm = 2 ** (n * (m + 2) / 2)
+
+    fock_range = range(n + 1)
+    k_ranges = [fock_range if i % 2 == 0 else [None] for i in range(m)]
+    k_sets = list(itertools.product(*k_ranges))
+
+    return (
+        np.abs(
+            np.sum(
+                comb(n, k[0])
+                * (comb(n, k[-1]) if odd else 1)
+                * math.prod((omega(t, q[j], j, k, 0, n) for j in range(1, m - 1)))
+                * (
+                    # np.exp(1j * k[0] * k[-1] * t) # it seems that should be true
+                    np.exp(-1j * k[0] * k[-1] * t)
+                    if odd
+                    # else np.cos((k[0] - k[-2]) * t / 2) ** n
+                    else ((np.exp(1j * (k[-2] - k[0]) * t) + 1) / 2) ** n
+                )
+                for k in k_sets
+            )
+        )
+        ** 2
+        / norm
+    )
+
+
 def entropy_vn(m, base=2):
     if base != 2:
         raise ValueError("invalid base: {base} != 2")
