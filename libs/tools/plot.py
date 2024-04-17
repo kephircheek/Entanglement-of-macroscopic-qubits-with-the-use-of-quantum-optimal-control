@@ -1,7 +1,7 @@
 import math
 
 
-def set_xlabel_as_pi_fraction(ax):
+def set_xlabel_as_pi_fraction(ax, fontsize=None):
     ax.set_xticks(
         *zip(
             *(
@@ -29,5 +29,6 @@ def set_xlabel_as_pi_fraction(ax):
                     1,
                 )
             )
-        )
+        ),
+        fontsize=fontsize,
     )
