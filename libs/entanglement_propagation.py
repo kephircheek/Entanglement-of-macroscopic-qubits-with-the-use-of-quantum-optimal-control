@@ -4,11 +4,13 @@ import json
 import math
 from dataclasses import asdict, dataclass
 
-import bec
 import joblib
 import numpy as np
+from scipy.integrate import quad
 from qutip import Qobj, fock, tensor
 from tqdm import tqdm
+
+import bec
 
 
 def comb(n: int, k: int):
@@ -67,7 +69,7 @@ def k_state(i: int, k: int, m: int, n: int):
     return bec.fock_state_constructor(bec.BEC_Qubits.init_default(n, 0), m, i=i, k=k)
 
 
-def f_state(t: float, q: tuple[int], m: int, n: int, focked=True):
+def f_state(t: float, q: tuple[int], m: int, n: int, phase: float = 0, focked=True):
     """
     Return final state, see eq. 11 and eq. 12.
 
@@ -100,7 +102,7 @@ def f_state(t: float, q: tuple[int], m: int, n: int, focked=True):
 
     return (
         sum(
-            f_state_coeff(t, q, k, m, n)
+            f_state_coeff(t, q, k, m, n, phase)
             * (
                 tensor(fock(n + 1, k[0]), fock(n + 1, k[m - 1]))
                 if focked
@@ -116,17 +118,56 @@ def f_state(t: float, q: tuple[int], m: int, n: int, focked=True):
     )
 
 
-def f_state_coeff(t: float, q: tuple[int], k: tuple[int], m: int, n: int):
+def f_state_norm(t: float, q: tuple[int], m: int, n: int, phase: float = 0):
+    if len(q) < (m - 2):
+        raise ValueError("too few measured sites")
+    q = (None,) + tuple(q) + (None,)
+
+    if m % 2 == 0:
+        norm = 2 ** (m * n / 4)
+    else:
+        norm = 2 ** ((m + 1) * n / 4)
+
+    fock_range = range(n + 1)
+    s = 0
+    for k1, km in itertools.product(fock_range, fock_range):
+        k_ranges = (
+            [[k1]]
+            + [fock_range if i % 2 == 0 else [None] for i in range(1, m - 1)]
+            + [[km]]
+        )
+        k_sets = list(itertools.product(*k_ranges))
+        s += abs(sum(f_state_coeff(t, q, k, m, n, phase) for k in k_sets)) ** 2
+    return np.sqrt(s) / norm
+
+
+def f_state_decoherence_part(k, q, n, phase):
+    x = math.prod(1 if k_ is None else (2 * k_ - n) for k_ in k)
+    return np.exp(1j * x * phase)
+
+
+def f_state_coeff(
+    t: float, q: tuple[int], k: tuple[int], m: int, n: int, phase: float = 0
+):
     coeff = math.prod((omega(t, q[j], j, k, 0, n) for j in range(1, m - 1)))
     coeff *= math.sqrt(comb(n, k[0]))
     coeff *= math.sqrt(comb(n, k[-1]))
+    if phase != 0:
+        # See eq. 32 in Alexey N Pyrkov and Tim Byrnes 2013 New J. Phys. 15 093019
+        # and eq. 25 in Full-Bloch-sphere teleportation of spinor Bose-Einstein condensates and spin ensembles.
+        coeff *= f_state_decoherence_part(k, q, n, phase)
     if m % 2 == 0:
         coeff *= 1 / math.sqrt(2) ** n
         coeff *= np.exp(1j * k[-2] * t * k[-1])
     return coeff
 
 
-def f_state_fid_respect_m2(t: float, q: tuple[int], m: int, n: int):
+def f_state_fid_respect_m2(t: float, q: tuple[int], m: int, n: int, phase: float = 0):
+    """
+    phase : float
+        See eq. 32 in Alexey N Pyrkov and Tim Byrnes 2013 New J. Phys. 15 093019
+        and eq. 25 in Full-Bloch-sphere teleportation of spinor Bose-Einstein condensates and spin ensembles.
+    """
     if len(q) < (m - 2):
         raise ValueError("too few measured sites")
     q = (None,) + tuple(q) + (None,)
@@ -139,20 +180,36 @@ def f_state_fid_respect_m2(t: float, q: tuple[int], m: int, n: int):
 
     fock_range = range(n + 1)
     k_ranges = [fock_range if i % 2 == 0 else [None] for i in range(m)]
+    if m % 2 == 0 and phase != 0:
+        k_ranges[-1] = fock_range
     k_sets = list(itertools.product(*k_ranges))
 
     return (
         np.abs(
             np.sum(
                 comb(n, k[0])
-                * (comb(n, k[-1]) if odd else 1)
+                * (1 if not odd and phase == 0 else comb(n, k[-1]))
                 * math.prod((omega(t, q[j], j, k, 0, n) for j in range(1, m - 1)))
                 * (
-                    # np.exp(1j * k[0] * k[-1] * t) # it seems that should be true
-                    np.exp(-1j * k[0] * k[-1] * t)
+                    (
+                        np.exp(-1j * k[0] * k[-1] * t)
+                        * (
+                            1
+                            if phase == 0
+                            else f_state_decoherence_part(k, q, n, phase)
+                        )
+                    )
                     if odd
                     # else np.cos((k[0] - k[-2]) * t / 2) ** n
-                    else ((np.exp(1j * (k[-2] - k[0]) * t) + 1) / 2) ** n
+                    else (
+                        ((np.exp(1j * (k[-2] - k[0]) * t) + 1) / 2) ** n
+                        if phase == 0
+                        else (
+                            np.exp(1j * k[-1] * (k[-2] - k[0]) * t)
+                            * f_state_decoherence_part(k, q, n, phase)
+                            / 2**n
+                        )
+                    )
                 )
                 for k in k_sets
             )
@@ -160,6 +217,23 @@ def f_state_fid_respect_m2(t: float, q: tuple[int], m: int, n: int):
         ** 2
         / norm
     )
+
+
+def fid_f_state_dephased_respect_m2(
+    t: float, q: tuple[int], m: int, n: int, gamma: float = 1
+):
+    if t == 0:
+        return 1, 0
+
+    def fun(phase):
+        return (
+            np.exp(-(phase**2) / (2 * gamma * t))
+            * f_state_fid_respect_m2(t, q, m, n, phase=phase)
+            / f_state_norm(t, q, m, n, phase=phase) ** 2
+        )
+
+    I, e = quad(fun, -np.inf, np.inf)
+    return I / np.sqrt(2 * np.pi * gamma * t), e
 
 
 def entropy_vn(m, base=2):

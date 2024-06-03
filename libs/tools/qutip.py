@@ -20,7 +20,7 @@ class TqdmProgressBar(BaseProgressBar):
         self.tqdm = tqdm
 
     def start(self, iterations, **kwargs):
-        self.pbar = self.tqdm(total=iterations, **kwargs)
+        self.pbar = self.tqdm(total=iterations, ncols=80, **kwargs)
         self.t_start = time.time()
         self.t_done = self.t_start - 1
 
