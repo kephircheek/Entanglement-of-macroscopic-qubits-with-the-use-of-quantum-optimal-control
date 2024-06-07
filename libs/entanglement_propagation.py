@@ -7,7 +7,8 @@ from dataclasses import asdict, dataclass
 import joblib
 import numpy as np
 from scipy.integrate import quad
-from qutip import Qobj, fock, tensor
+from qutip import Qobj, fock, tensor, ket2dm
+from qutip.entropy import negativity
 from tqdm import tqdm
 
 import bec
@@ -217,6 +218,23 @@ def f_state_fid_respect_m2(t: float, q: tuple[int], m: int, n: int, phase: float
         ** 2
         / norm
     )
+
+
+def negativity_of_dephased_state(
+    t: float, q: tuple[int], m: int, n: int, gamma: float = 1, quad_kwargs: dict = {}
+):
+    if t == 0:
+        return 0, 0
+
+    def fun(phase):
+        s = f_state(t, q, m, n, phase=phase)
+        s /= f_state_norm(t, q, m, n, phase=phase)
+        rho = ket2dm(s)
+        neg = negativity(rho, 0, method="eigenvalues")
+        return np.exp(-(phase**2) / (2 * gamma * t)) * neg
+
+    I, e = quad(fun, -np.inf, np.inf, **quad_kwargs)
+    return I / np.sqrt(2 * np.pi * gamma * t), e
 
 
 def fid_f_state_dephased_respect_m2(
