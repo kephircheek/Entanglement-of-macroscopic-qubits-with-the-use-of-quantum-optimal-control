@@ -42,16 +42,12 @@ class OptimizeTask:
             "x": bec.sx,
             "y": bec.sy,
             "z": bec.sz,
-            "z^2": lambda model, n, k: bec.sz(self.model, n=n, k=k)
-            * bec.sz(self.model, n=n, k=k),
+            "z^2": lambda model, n, k: bec.sz(self.model, n=n, k=k) * bec.sz(self.model, n=n, k=k),
         }
         oglobal = {
-            "xx": lambda model, n: bec.sx(self.model, n=n, k=0)
-            * bec.sx(self.model, n=n, k=1),
-            "yy": lambda model, n: bec.sy(self.model, n=n, k=0)
-            * bec.sy(self.model, n=n, k=1),
-            "xxyy": lambda model, n: bec.sx(self.model, n=n, k=0)
-            * bec.sx(self.model, n=n, k=1)
+            "xx": lambda model, n: bec.sx(self.model, n=n, k=0) * bec.sx(self.model, n=n, k=1),
+            "yy": lambda model, n: bec.sy(self.model, n=n, k=0) * bec.sy(self.model, n=n, k=1),
+            "xxyy": lambda model, n: bec.sx(self.model, n=n, k=0) * bec.sx(self.model, n=n, k=1)
             + bec.sy(self.model, n=n, k=0) * bec.sy(self.model, n=n, k=1),
         }
         for control in self.controls:
