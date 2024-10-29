@@ -168,12 +168,23 @@ def optimize(*args, **kwargs):
 
 
 if __name__ == "__main__":
-    # p_types = "RND|ZERO|LIN|SINE|SQUARE|SAW|TRIANGLE".split("|")
-    p_types = "RND|SINE".split("|")
-    # controls_set = [(("y", 0), ("y", 1)), (("x", 0), ("x", 1)), ("xx", "yy")]
-    # controls_set = [("xxyy", ("x", 0), ("x", 1)), ("xxyy",)]
+    p_types = [
+        # "RND",
+        # "ZERO",
+        # "LIN",
+        "SINE",
+        "SQUARE",
+        # "SAW",
+        # "TRIANGLE",
+    ]
     controls_set = [
-        (("z^2", 0), ("z^2", 1)),
+        # (("y", 0), ("y", 1)),
+        # (("x", 0), ("x", 1)),
+        # ("xx", "yy"),
+        ("xxyy", ("x", 0), ("x", 1)),
+        # ("xxyy",),
+        # (("z^2", 0), ("z^2", 1)),
+        (("x", 0), ("x", 1)),
         (("z^2", 0), ("z^2", 1), ("x", 0), ("x", 1)),
     ]
     t_targets = [0.2, 0.3, 0.4]
