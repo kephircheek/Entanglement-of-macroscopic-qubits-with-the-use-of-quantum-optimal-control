@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import qutip
 from joblib import Parallel, delayed
-from qutip.control.pulseoptim import optimize_pulse_unitary
+from qutip.control.pulseoptim import opt_pulse_crab_unitary, optimize_pulse_unitary
 from tqdm import tqdm
 
 import bec  # isort: skip
@@ -31,7 +31,7 @@ class OptimizeTask:
     fid_err_targ: float = 1e-2
     max_iter: int = 500
     max_wall_time: timedelta = timedelta(minutes=5).seconds
-    min_grad: float = 1e-5
+    min_grad: float = None  # 1e-5
     method: str = "GRAPE"
     controls: tuple[tuple[str]] = (("x", 0), ("y", 1))
 
@@ -107,6 +107,20 @@ class OptimizeTask:
                 max_wall_time=self.max_wall_time,
                 min_grad=self.min_grad,
                 init_pulse_type=self.init_pulse_type,
+                gen_stats=True,
+            )
+        elif self.method == "CRAB":
+            result = opt_pulse_crab_unitary(
+                H_d,
+                H_c,
+                psi_initial,
+                psi_target,
+                self.n_ts,
+                self.t_target,
+                fid_err_targ=self.fid_err_targ,
+                max_iter=self.max_iter,
+                max_wall_time=self.max_wall_time,
+                guess_pulse_type=self.init_pulse_type,
                 gen_stats=True,
             )
         else:
