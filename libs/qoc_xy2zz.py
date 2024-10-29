@@ -18,7 +18,7 @@ from joblib import Parallel, delayed
 from qutip.control.pulseoptim import optimize_pulse_unitary
 from tqdm import tqdm
 
-import bec
+import bec  # isort: skip
 
 
 @dataclass(frozen=True)
