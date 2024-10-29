@@ -187,15 +187,19 @@ if __name__ == "__main__":
         (("x", 0), ("x", 1)),
         (("z^2", 0), ("z^2", 1), ("x", 0), ("x", 1)),
     ]
-    t_targets = [0.2, 0.3, 0.4]
-    max_iter: int = 1000
-    max_wall_time = timedelta(hours=2).seconds
-    min_grad: float = 1e-8
-    n_ts = 400
-    # max_wall_time = 1
-    cases = list(itertools.product(p_types, controls_set, t_targets))
+    t_targets = [
+        # 0.2,
+        # 0.3,
+        0.4,
+        # 0.6,
+    ]
+    t_step = 1e-3
+    max_iter: int = 3
+    max_wall_time = timedelta(minutes=1).seconds
+    cases = list(itertools.product(p_types, controls_set, ((t, int(t / t_step)) for t in t_targets)))
     Parallel(n_jobs=-2)(
         delayed(optimize)(
+            method="CRAB",
             t_target=t_target,
             controls=controls,
             init_pulse_type=p_type,
@@ -203,5 +207,5 @@ if __name__ == "__main__":
             max_iter=max_iter,
             n_ts=n_ts,
         )
-        for p_type, controls, t_target in tqdm(cases)
+        for p_type, controls, (t_target, n_ts) in tqdm(cases)
     )
